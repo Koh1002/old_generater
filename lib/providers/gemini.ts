@@ -22,15 +22,37 @@ export class GeminiProvider implements ProviderInterface {
     notes?: string;
   }> {
     try {
-      // Try to use the API to validate the key
-      // We'll test with a simple text model first
-      const testModel = this.client.getGenerativeModel({ model: 'gemini-pro' });
+      // Try to use the API to validate the key with available models
+      // Test with the most recent stable text models
+      const testModelCandidates = [
+        'gemini-1.5-flash',
+        'gemini-1.5-pro',
+        'gemini-pro',
+      ];
 
-      await testModel.generateContent({
-        contents: [{ role: 'user', parts: [{ text: 'test' }] }],
-      });
+      let validationSuccess = false;
+      let testError = null;
 
-      // Try to determine the best image model by attempting to access them
+      for (const modelName of testModelCandidates) {
+        try {
+          const testModel = this.client.getGenerativeModel({ model: modelName });
+          await testModel.generateContent({
+            contents: [{ role: 'user', parts: [{ text: 'test' }] }],
+          });
+          validationSuccess = true;
+          this.textModel = modelName; // Use the working model
+          break;
+        } catch (error: any) {
+          testError = error;
+          continue;
+        }
+      }
+
+      if (!validationSuccess) {
+        throw testError || new Error('全てのモデルでの検証に失敗しました');
+      }
+
+      // Set image model (note: Gemini image generation is still in development)
       const imageModelCandidates = [
         'gemini-3-pro-image-preview',
         'gemini-2.5-flash-image',
@@ -42,7 +64,6 @@ export class GeminiProvider implements ProviderInterface {
 
       for (const candidate of imageModelCandidates) {
         try {
-          // Try to get the model (this doesn't make an API call, just checks access)
           const model = this.client.getGenerativeModel({ model: candidate });
           if (model) {
             this.imageModel = candidate;
@@ -56,25 +77,6 @@ export class GeminiProvider implements ProviderInterface {
 
       if (!foundImageModel) {
         notes += '画像生成モデルの自動検出に失敗しました。デフォルトの gemini-2.5-flash-image を使用します。';
-      }
-
-      // Set text model
-      const textModelCandidates = [
-        'gemini-2.5-pro',
-        'gemini-2.5-flash',
-        'gemini-pro',
-      ];
-
-      for (const candidate of textModelCandidates) {
-        try {
-          const model = this.client.getGenerativeModel({ model: candidate });
-          if (model) {
-            this.textModel = candidate;
-            break;
-          }
-        } catch {
-          continue;
-        }
       }
 
       return {

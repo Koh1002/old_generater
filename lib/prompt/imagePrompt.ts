@@ -75,7 +75,7 @@ The result should clearly be the same person, just at age ${targetAge}.`;
 export function getImageGenerationConfig(provider: 'openai' | 'gemini') {
   if (provider === 'openai') {
     return {
-      quality: 'high' as const,
+      quality: 'hd' as const,
       size: '1024x1024' as const,
       style: 'natural' as const,
     };
