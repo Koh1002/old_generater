@@ -6,7 +6,7 @@ import { generateCharacterPrompt, getTextGenerationConfig, sanitizeCharacterText
 export class GeminiProvider implements ProviderInterface {
   private client: GoogleGenerativeAI;
   private imageModel: string = 'gemini-3-pro-image-preview'; // Default to Nano Banana Pro
-  private textModel: string = 'gemini-1.5-flash'; // Default
+  private textModel: string = 'gemini-2.5-flash'; // Default
 
   constructor(apiKey: string) {
     this.client = new GoogleGenerativeAI(apiKey);
@@ -23,11 +23,12 @@ export class GeminiProvider implements ProviderInterface {
   }> {
     try {
       // Try to use the API to validate the key with available models
-      // Test with the most recent stable text models
+      // Test with the most recent stable text models (2026 v1beta API)
       const testModelCandidates = [
+        'gemini-2.5-flash',
+        'gemini-2.5-pro',
         'gemini-2.0-flash',
-        'gemini-1.5-flash',
-        'gemini-1.5-pro',
+        'gemini-2.0-flash-exp',
       ];
 
       let validationSuccess = false;
@@ -61,8 +62,9 @@ export class GeminiProvider implements ProviderInterface {
 
       // Set image model - prioritize Nano Banana Pro for best quality
       const imageModelCandidates = [
-        'gemini-3-pro-image-preview',  // Nano Banana Pro - best quality, supports reference images
-        'gemini-2.5-flash-image',      // Nano Banana - faster, cheaper
+        'gemini-3-pro-image-preview',           // Nano Banana Pro - best quality, supports reference images
+        'gemini-2.0-flash-exp-image-generation', // Gemini 2.0 Flash with image generation
+        'gemini-2.5-flash-image',               // Fallback
       ];
 
       let notes = '';
