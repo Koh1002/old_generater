@@ -25,9 +25,9 @@ export class GeminiProvider implements ProviderInterface {
       // Try to use the API to validate the key with available models
       // Test with the most recent stable text models
       const testModelCandidates = [
+        'gemini-2.0-flash',
         'gemini-1.5-flash',
         'gemini-1.5-pro',
-        'gemini-pro',
       ];
 
       let validationSuccess = false;
@@ -36,20 +36,27 @@ export class GeminiProvider implements ProviderInterface {
       for (const modelName of testModelCandidates) {
         try {
           const testModel = this.client.getGenerativeModel({ model: modelName });
-          await testModel.generateContent({
-            contents: [{ role: 'user', parts: [{ text: 'test' }] }],
-          });
-          validationSuccess = true;
-          this.textModel = modelName; // Use the working model
-          break;
+          // Simplified test - just generate simple content
+          const result = await testModel.generateContent('test');
+          const response = await result.response;
+          const text = response.text();
+
+          if (text) {
+            validationSuccess = true;
+            this.textModel = modelName; // Use the working model
+            break;
+          }
         } catch (error: any) {
+          console.log(`[Gemini] Model ${modelName} test failed:`, error.message);
           testError = error;
           continue;
         }
       }
 
       if (!validationSuccess) {
-        throw testError || new Error('全てのモデルでの検証に失敗しました');
+        const errorMsg = testError?.message || '全てのモデルでの検証に失敗しました';
+        console.error('[Gemini] Validation failed:', errorMsg);
+        throw new Error(errorMsg);
       }
 
       // Set image model - prioritize Nano Banana Pro for best quality
@@ -85,9 +92,22 @@ export class GeminiProvider implements ProviderInterface {
         notes: notes || undefined,
       };
     } catch (error: any) {
+      console.error('[Gemini] Validation error:', error);
+
+      let errorMessage = error.message || '不明なエラー';
+
+      // Provide more helpful error messages
+      if (errorMessage.includes('API key not valid')) {
+        errorMessage = 'APIキーが無効です。Google AI Studioで正しいキーを確認してください。';
+      } else if (errorMessage.includes('quota')) {
+        errorMessage = 'APIの利用枠を超過しています。';
+      } else if (errorMessage.includes('permission')) {
+        errorMessage = 'APIキーに必要な権限がありません。';
+      }
+
       return {
         ok: false,
-        notes: `APIキーの検証に失敗しました: ${error.message || '不明なエラー'}`,
+        notes: `APIキーの検証に失敗しました: ${errorMessage}`,
       };
     }
   }
