@@ -157,7 +157,7 @@ export class GeminiProvider implements ProviderInterface {
         generationConfig: {
           temperature: config.temperature,
           candidateCount: config.candidateCount,
-          responseMimeType: 'image/png',
+          // Note: responseMimeType is not supported for image generation
         },
       });
 
@@ -176,15 +176,36 @@ export class GeminiProvider implements ProviderInterface {
 
       // Find the image part in the response
       let generatedImageData: string | null = null;
+
+      // Debug: log the response structure
+      console.log('[Gemini] Response structure:', JSON.stringify({
+        hasCandidates: !!response.candidates,
+        candidatesLength: response.candidates?.length,
+        hasContent: !!candidate.content,
+        hasParts: !!candidate.content?.parts,
+        partsLength: candidate.content?.parts?.length,
+      }));
+
       for (const part of candidate.content.parts) {
+        console.log('[Gemini] Part type:', typeof part, 'keys:', Object.keys(part));
+
+        // Check for inlineData (image data)
         if ((part as any).inlineData) {
           generatedImageData = (part as any).inlineData.data;
+          console.log('[Gemini] Found image data, length:', generatedImageData?.length);
           break;
+        }
+
+        // Also log if there's text (for debugging)
+        if ((part as any).text) {
+          console.log('[Gemini] Part contains text:', (part as any).text.substring(0, 100));
         }
       }
 
       if (!generatedImageData) {
-        throw new Error('画像生成に失敗しました: 画像データが見つかりません');
+        // Log the full response for debugging
+        console.error('[Gemini] No image found in response. Full response:', JSON.stringify(response, null, 2));
+        throw new Error('画像生成に失敗しました: 画像データが見つかりません。モデルがテキストを返した可能性があります。');
       }
 
       return {
