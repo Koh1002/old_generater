@@ -37,34 +37,53 @@ export function generateImagePrompt(photoAge: number, targetAge: number): string
     }
   }
 
-  const prompt = `Transform this person's appearance to look exactly ${targetAge} years old (currently ${photoAge} years old).
+  const prompt = `Create a photorealistic portrait of this EXACT same person at age ${targetAge} (currently ${photoAge} years old).
 
-CRITICAL REQUIREMENTS:
-- Maintain the EXACT same person identity: preserve all distinctive facial features, face shape, eye shape, nose structure, mouth shape, and overall facial proportions
-- ONLY change age-related characteristics - do NOT alter hairstyle, hair color (except natural greying with age), or add accessories
-- Keep the background simple and similar to the original, or use a plain neutral background
-- Ensure the transformation looks natural and realistic for the target age
+🎯 CRITICAL: IDENTITY PRESERVATION (HIGHEST PRIORITY)
+- This MUST be the SAME PERSON with 100% facial feature consistency
+- Preserve EVERY unique characteristic that makes this person identifiable
+- Think of this as showing the same person at a different age, NOT creating a different person
+- The viewer should instantly recognize this as the same individual
 
-AGE-SPECIFIC CHANGES:
+📸 FACIAL FEATURES TO PRESERVE EXACTLY:
+- Face shape and bone structure (jaw, cheekbones, forehead, chin)
+- Eye shape, size, spacing, and color
+- Eyebrow shape and arch
+- Nose bridge, width, and tip shape
+- Mouth width and lip shape
+- Ear shape and position
+- Facial proportions and symmetry
+- Any distinctive marks, moles, or features
+- Gender presentation and characteristics
+
+⏰ AGE TRANSFORMATION (${photoAge} → ${targetAge}):
 ${ageSpecificChanges}
 
-WHAT TO PRESERVE:
-- Facial bone structure and proportions
-- Eye shape, color, and placement
+✅ WHAT TO CHANGE (Age-related only):
+- Skin texture: wrinkles, fine lines, age spots appropriate for ${targetAge}
+- Skin elasticity and facial volume changes
+- Hair: natural color changes (greying/whitening), density, texture for age ${targetAge}
+- Subtle changes in facial fullness/sagging consistent with aging
+- Eye area: crow's feet, under-eye changes appropriate for age
+
+❌ WHAT NOT TO CHANGE:
+- Core facial structure and bone features
+- Eye color and fundamental eye shape
 - Nose structure
-- Mouth shape and lip proportions
-- Ear shape and placement
-- Overall facial width and length ratios
-- Distinctive facial characteristics
-- Hairstyle (except for natural changes in volume/density with age)
+- Mouth and lip fundamental shape
+- Facial proportions
+- Gender characteristics
+- Hairstyle (except natural age-related changes)
+- Background (keep simple and similar)
 
-WHAT TO CHANGE:
-- Skin texture and wrinkles appropriate for ${targetAge} years old
-- Facial volume and elasticity appropriate for the age
-- Natural hair color changes if aging significantly (greying)
-- Age-appropriate skin tone and texture
+🎨 STYLE REQUIREMENTS:
+- Photorealistic, high-quality portrait
+- Natural lighting
+- Clear, sharp focus on face
+- Professional headshot composition
+- Neutral or softly blurred background
 
-The result should clearly be the same person, just at age ${targetAge}.`;
+The final image must make viewers say "That's clearly the same person, just ${targetAge} years old" - NOT "That's a different person."`;
 
   return prompt;
 }
@@ -80,10 +99,10 @@ export function getImageGenerationConfig(provider: 'openai' | 'gemini') {
       style: 'natural' as const,
     };
   } else {
-    // Gemini configuration
+    // Gemini configuration (Nano Banana)
     return {
       candidateCount: 1,
-      temperature: 0.4, // Lower temperature for more consistent results
+      temperature: 0.3, // Lower temperature for better identity preservation
     };
   }
 }

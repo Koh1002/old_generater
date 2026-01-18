@@ -5,8 +5,8 @@ import { generateCharacterPrompt, getTextGenerationConfig, sanitizeCharacterText
 
 export class GeminiProvider implements ProviderInterface {
   private client: GoogleGenerativeAI;
-  private imageModel: string = 'gemini-2.5-flash-image'; // Default
-  private textModel: string = 'gemini-2.5-flash'; // Default
+  private imageModel: string = 'gemini-3-pro-image-preview'; // Default to Nano Banana Pro
+  private textModel: string = 'gemini-1.5-flash'; // Default
 
   constructor(apiKey: string) {
     this.client = new GoogleGenerativeAI(apiKey);
@@ -52,11 +52,10 @@ export class GeminiProvider implements ProviderInterface {
         throw testError || new Error('全てのモデルでの検証に失敗しました');
       }
 
-      // Set image model (note: Gemini image generation is still in development)
+      // Set image model - prioritize Nano Banana Pro for best quality
       const imageModelCandidates = [
-        'gemini-3-pro-image-preview',
-        'gemini-2.5-flash-image',
-        'gemini-pro-vision',
+        'gemini-3-pro-image-preview',  // Nano Banana Pro - best quality, supports reference images
+        'gemini-2.5-flash-image',      // Nano Banana - faster, cheaper
       ];
 
       let notes = '';
@@ -94,7 +93,7 @@ export class GeminiProvider implements ProviderInterface {
   }
 
   /**
-   * Generates an aged image using Gemini image models
+   * Generates an aged image using Gemini image models (Nano Banana)
    */
   async generateAgedImage(params: ImageGenerationParams): Promise<{
     imageBase64: string;
@@ -109,54 +108,78 @@ export class GeminiProvider implements ProviderInterface {
       // Convert buffer to base64
       const imageBase64 = imageBuffer.toString('base64');
 
-      // Create the model
+      // Create the model (Nano Banana / Gemini image generation model)
       const model = this.client.getGenerativeModel({
         model: this.imageModel,
       });
 
-      // For Gemini, we use the multimodal approach with both image and text
-      const imagePart = {
-        inlineData: {
-          data: imageBase64,
-          mimeType: 'image/png',
-        },
-      };
-
+      // Gemini image generation uses reference images to maintain consistency
+      // We pass the original image as a reference so the model maintains facial features
       const result = await model.generateContent({
         contents: [
           {
             role: 'user',
             parts: [
-              imagePart,
-              { text: prompt },
+              {
+                inlineData: {
+                  mimeType: 'image/png',
+                  data: imageBase64,
+                },
+              },
+              {
+                text: `${prompt}\n\nIMPORTANT: Use the provided image as a reference. Maintain the EXACT same person's facial features, face structure, and identity. Only change the age-related characteristics.`
+              },
             ],
           },
         ],
         generationConfig: {
           temperature: config.temperature,
           candidateCount: config.candidateCount,
+          responseMimeType: 'image/png',
         },
       });
 
       const response = result.response;
 
-      // For image generation, Gemini might return the image differently
-      // This is a placeholder for the actual Gemini image generation API
-      // which might work differently
+      // Extract the generated image from the response
+      // Gemini returns images in the parts array with inlineData
+      if (!response.candidates || response.candidates.length === 0) {
+        throw new Error('画像生成に失敗しました: レスポンスが空です');
+      }
 
-      // Note: As of early 2025, Gemini's image generation capabilities
-      // are still evolving. The actual API might differ.
-      // This implementation assumes a future API structure.
+      const candidate = response.candidates[0];
+      if (!candidate.content || !candidate.content.parts) {
+        throw new Error('画像生成に失敗しました: コンテンツが空です');
+      }
 
-      // For now, we'll return an error indicating the feature needs proper Gemini API support
-      throw new Error(
-        'Gemini画像生成機能は開発中です。現在はOpenAIプロバイダーをご利用ください。' +
-        'Gemini APIの画像生成機能が正式にリリースされ次第対応します。'
-      );
+      // Find the image part in the response
+      let generatedImageData: string | null = null;
+      for (const part of candidate.content.parts) {
+        if ((part as any).inlineData) {
+          generatedImageData = (part as any).inlineData.data;
+          break;
+        }
+      }
 
+      if (!generatedImageData) {
+        throw new Error('画像生成に失敗しました: 画像データが見つかりません');
+      }
+
+      return {
+        imageBase64: generatedImageData,
+        modelUsed: this.imageModel,
+      };
     } catch (error: any) {
       console.error('Gemini image generation error:', error);
-      throw new Error(`画像生成エラー: ${error.message || '不明なエラー'}`);
+
+      // Provide helpful error messages
+      let errorMessage = error.message || '不明なエラー';
+
+      if (errorMessage.includes('responseMimeType') || errorMessage.includes('image/png')) {
+        errorMessage = `画像生成モデル (${this.imageModel}) がサポートされていない可能性があります。別のモデルをお試しください。`;
+      }
+
+      throw new Error(`画像生成エラー: ${errorMessage}`);
     }
   }
 
